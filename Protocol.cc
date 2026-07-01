@@ -62,7 +62,7 @@ bool ProtocolAscii::handle_response(evbuffer *input, bool &done) {
     conn->stats.rx_bytes += n_read_out;
 
     if (!strncmp(buf, "END", 3)) {
-      if (read_state == WAITING_FOR_GET) conn->stats.get_misses++;
+      if (read_state == WAITING_FOR_GET) {conn->stats.get_misses++; /*conn->issue_set_missed();*/}
       read_state = WAITING_FOR_GET;
       done = true;
     } else if (!strncmp(buf, "VALUE", 5)) {
@@ -184,6 +184,7 @@ bool ProtocolBinary::handle_response(evbuffer *input, bool &done) {
   // If something other than success, count it as a miss
   if (h->opcode == CMD_GET && h->status) {
       conn->stats.get_misses++;
+      // conn->issue_set_missed();
   }
 
   if (unlikely(h->opcode == CMD_SASL)) {

@@ -29,6 +29,8 @@ Connection::Connection(struct event_base* _base, struct evdns_base* _evdns,
   keysize = createGenerator(options.keysize);
   keygen = new KeyGenerator(keysize, options.records);
 
+  zipf = new ZipfGenerator(options.records, /* alpha */ 1.1);
+
   if (options.lambda <= 0) {
     iagen = createGenerator("0");
   } else {
@@ -120,8 +122,13 @@ void Connection::start_loading() {
  */
 void Connection::issue_something(double now) {
   char key[256];
-  // FIXME: generate key distribution here!
-  string keystr = keygen->generate(lrand48() % options.records);
+  uint64_t index;
+  if (zipf) {
+      index = zipf->next();
+  } else {
+      index = lrand48() % options.records;
+  }
+  string keystr = keygen->generate(index);
   strcpy(key, keystr.c_str());
 
   if (drand48() < options.update) {
@@ -187,6 +194,15 @@ void Connection::issue_set(const char* key, const char* value, int length,
   if (read_state != LOADING) stats.tx_bytes += l;
 }
 
+void Connection::issue_set_missed() {
+
+  char key[256];
+  string keystr = keygen->generate(lrand48() % options.records);
+  strcpy(key, keystr.c_str());
+
+  int index = lrand48() % (1024 * 1024);
+  issue_set(key, &random_char[index], valuesize->generate(), 0.0);
+}
 /**
  * Return the oldest live operation in progress.
  */

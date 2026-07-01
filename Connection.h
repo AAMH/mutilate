@@ -17,6 +17,7 @@
 #include "Generator.h"
 #include "Operation.h"
 #include "util.h"
+#include "zipf_generator.h"
 
 #include "Protocol.h"
 
@@ -54,6 +55,8 @@ public:
   void read_callback();
   void write_callback();
   void timer_callback();
+  
+  void issue_set_missed();
 
 private:
   string hostname;
@@ -92,6 +95,7 @@ private:
   // Parameters to track progress of the data loader.
   int loader_issued, loader_completed;
 
+  ZipfGenerator *zipf = nullptr;
   Protocol *prot;
   Generator *valuesize;
   Generator *keysize;

@@ -23,6 +23,51 @@ Building
     apt-get install scons libevent-dev gengetopt libzmq-dev
     scons
 
+If you need to clean generated SCons state before rebuilding, remove the
+temporary SCons files and rebuild:
+
+    rm -rf .sconf_temp .sconsign.dblite .sconsign .sconsign.dblite .sconsign.dblite.dblite
+    scons || true
+
+Local Workload Changes
+======================
+
+This version includes a local modification to key selection.  The original
+code path selected record IDs with uniform random sampling:
+
+    lrand48() % records
+
+This made even the hard-coded Facebook ETC workload use uniform key selection.
+This version constructs a Zipfian record-ID generator in `Connection.cc`:
+
+    ZipfGenerator(records, 1.1)
+
+During the main phase, keys are generated from the Zipfian record ID instead of
+the old uniform record ID.  The Facebook ETC value-size, key-size, and
+inter-arrival distributions are still selected with:
+
+    --valuesize=fb_value --keysize=fb_key --iadist=fb_ia
+
+Facebook ETC Example
+====================
+
+A typical ETC run against one local memcached server is:
+
+    ./mutilate -s localhost:$port -t 5000 \
+        --keysize=fb_key --valuesize=fb_value --iadist=fb_ia \
+        --records=3000000 -q 20000 -c 25
+
+By default, mutilate first loads the configured record set into memcached unless
+`--noload` is used.  The load phase sends SET requests for the full record range.
+The main phase sends GET requests only by default because `--update` defaults to
+`0.0`.  If `--update` is set above zero, that fraction of main-phase operations
+become SET requests.
+
+Misses are counted and reported.  The original code path could refill missed
+GETs by calling `issue_set_missed()`, but in this version those calls are
+commented out in both the ASCII and binary protocol response paths.  As a
+result, missed GETs are not automatically refilled with SETs by default.
+
 Basic Usage
 ===========
 
